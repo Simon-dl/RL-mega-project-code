@@ -1,8 +1,11 @@
 
 import gymnasium as gym
 import ale_py #needed for namespace
+import torch
 
-env = gym.make('ALE/Breakout-v5',render_mode="human")
+
+#render_mode="human" for when I want to watch an episode
+env = gym.make('ALE/Breakout-v5')
 
 episode_over = False
 total_reward = 0
@@ -11,10 +14,11 @@ print(env.action_space)
 
 observations, info = env.reset()
 
-while not episode_over:
-    action = env.action_space.sample()  # Random action for now - real agents will be smarter!
+print(observations.shape)
 
-    # Take the action and see what happens
+while not episode_over:
+    action = env.action_space.sample() 
+    
     observation, reward, terminated, truncated, info = env.step(action)
 
     total_reward += reward
