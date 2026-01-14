@@ -4,73 +4,78 @@ import ale_py #needed for namespace
 import cv2
 import numpy as np
 from DQN import phi
+from DQN import DQN
 import torch
 
 
-class DQN(torch.nn.Module):
-    def __init__(self, input_shape, n_actions):
-        super(DQN, self).__init__()
-        self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(input_shape[1], 32, kernel_size=8, stride=4),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            torch.nn.ReLU()
-        )
-        self.fc = torch.nn.Sequential(
-            torch.nn.Linear(3136,512), #hardcoded the elements gotten by flattened with out_conv.numel()
-            torch.nn.Linear(512,n_actions)
-        )
-    
-    def forward(self, x):
-        out_conv = self.conv(x)
-        print(out_conv.numel())
-        x = torch.flatten(out_conv, start_dim=1)
-        return self.fc(x)
+def breakout_training():
+    #render_mode="human" for when I want to watch an episode
+    env = gym.make('ALE/Breakout-v5')
+
+    replay_memory = []
+
+    behavior_model = DQN(4)
+    target_model = DQN(4)
+
+    lr = .05
+    optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
+
+    update_target = 20
+
+    episodes = 1
+    discount = .99
 
 
-#render_mode="human" for when I want to watch an episode
-env = gym.make('ALE/Breakout-v5')
+    for i in range(episodes): 
+        episode_over = False
+        total_reward = 0
 
-model = DQN((1,4,84,84),4)
-episode_over = False
-total_reward = 0
+        frame_skip = 4
 
-frame_skip = 4
-frames = []
-frame_counter = 1
 
-print(env.action_space)
-
-observations, info = env.reset()
-frames.append(observations)
-print(observations.shape)
-
-action = env.action_space.sample() 
-
-# while not episode_over:
-for i in range(4):
-    print(i)
-    observation, reward, terminated, truncated, info = env.step(action)
-
-    frames.append(observation)
-    frame_counter += 1 
-    if frame_counter == frame_skip:
-        print("here", frame_counter)
-        frame_counter = 0
-        processed_frames = torch.tensor(phi(frames),dtype=torch.float)
-        print(processed_frames.shape)
-        actions = model(processed_frames)
-        print(actions)
+        phi_1 = 0
+        phi_2 = 0
 
 
 
+        
+        #get inital proccessed frames
+        frames = []
+        action = 0 #start with no action
+        observations = env.reset()
+        frames.append(observations)
+        for j in range(3):
+            observation, reward, terminated, truncated = env.step(action)
+            frames.append(observation)
+        phi_1 = torch.tensor(phi(frames),dtype=torch.float)
+        action = torch.argmax(behavior_model(phi_1)).item() #should ideally do eps-greedy action selection here
+        
 
 
-    total_reward += reward
-    episode_over = terminated or truncated
+        frame_counter = 0 
+        # while not episode_over:
+        for i in range(4):
+            print(i)
+            observation, reward, terminated, truncated = env.step(action)
 
-print(f"Episode finished! Total reward: {total_reward}")
-env.close()
+            frames.append(observation)
+            frame_counter += 1 
+            if frame_counter == frame_skip:
+                print("here", frame_counter)
+                frame_counter = 0
+                processed_frames = torch.tensor(phi(frames),dtype=torch.float)
+                print(processed_frames.shape)
+                action = torch.argmax(behavior_model(processed_frames)).item()
+                print("action",action)
 
+
+
+
+
+            total_reward += reward
+            episode_over = terminated or truncated
+
+        print(f"Episode finished! Total reward: {total_reward}")
+    env.close()
+
+breakout_training()
