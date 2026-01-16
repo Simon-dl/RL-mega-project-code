@@ -9,22 +9,22 @@ import torch
 
 
 
-def populate_buffer(env,frame_skip):
+def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     """
-    Takes in env and number of frames to skip.
+    Takes in env, buffer, frames to skip, and amount to populate (in number of frames). 
 
-    returns: phi_2 and starting_frame_count
+    returns: phi_2 and total_frame_count
     """
     phi_1 = 0
     phi_2 = 0
 
     #phi_1 = torch.tensor(phi(frames),dtype=torch.float)
 
-   
+    total_frame_count = 0
     #populate replay buffer with random plays, split into helper function later
     frames = []
-    observations = env.reset()
-    frames.append(observations)
+    observation, _ = env.reset()
+    frames.append(observation)
     total_frame_count += 1
     old_action = 0
     old_reward = 0
@@ -33,8 +33,8 @@ def populate_buffer(env,frame_skip):
 
     for i in range(3): #setting up
         total_frame_count += 1
-        observation, reward, terminated, truncated = env.step(action)
-        frames.append(observations)
+        observation, reward, terminated, truncated, _ = env.step(action)
+        frames.append(observation)
         if len(frames) == frame_skip:
             action = env.action_space.sample() 
             phi_1 = phi(frames)
@@ -44,10 +44,24 @@ def populate_buffer(env,frame_skip):
             old_reward = reward
             frames = []
 
-    while total_frame_count <= 10:
-        observation, reward, terminated, truncated = env.step(action)
+    while total_frame_count <= amount_to_pop:
+        observation, reward, terminated, truncated, _ = env.step(action)
         frames.append(observation)
         total_frame_count += 1
+
+        if terminated or truncated:
+            phi_1 = phi_2
+            phi_2 = -1
+            transition = (phi_1,old_action,old_reward,phi_2)
+            replay_buffer.append(transition)
+
+            frames = []
+            observation, _ = env.reset()
+            frames.append(observation)
+            action = env.action_space.sample() 
+            old_action = action
+            old_reward = 0
+
 
         if len(frames) == frame_skip:
             phi_1 = phi_2
@@ -59,6 +73,8 @@ def populate_buffer(env,frame_skip):
             old_action = action
             old_reward = reward
             frames = []
+
+    return phi_2, total_frame_count 
 
 
 
@@ -90,50 +106,57 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
+    phi_2, total_frame_count = populate_buffer(env,replay_buffer,frame_skip,20) 
 
-    for i in range(episodes): 
+    print(" \n phi_2",phi_2)
+    print(" \n total_frame_count", total_frame_count)
+    print(" \n buffer amount",len(replay_buffer))
+    print(" \n buffer 1 action",replay_buffer[1][1])
+
+
+    # for i in range(episodes): 
 
 
 
 
         
-        #get inital proccessed frames
-        frames = []
-        action = action = env.action_space.sample() 
-        observations = env.reset()
-        frames.append(observations)
-        for j in range(3):
-            observation, reward, terminated, truncated = env.step(action)
-            frames.append(observation)
-        phi_1 = torch.tensor(phi(frames),dtype=torch.float)
-        action = torch.argmax(behavior_model(phi_1)).item() #should ideally do eps-greedy action selection here
+    #     #get inital proccessed frames
+    #     frames = []
+    #     action = action = env.action_space.sample() 
+    #     observations = env.reset()
+    #     frames.append(observations)
+    #     for j in range(3):
+    #         observation, reward, terminated, truncated = env.step(action)
+    #         frames.append(observation)
+    #     phi_1 = torch.tensor(phi(frames),dtype=torch.float)
+    #     action = torch.argmax(behavior_model(phi_1)).item() #should ideally do eps-greedy action selection here
         
 
 
-        frame_counter = 0 
-        # while not episode_over:
-        for i in range(4):
-            print(i)
-            observation, reward, terminated, truncated = env.step(action)
+    #     frame_counter = 0 
+    #     # while not episode_over:
+    #     for i in range(4):
+    #         print(i)
+    #         observation, reward, terminated, truncated = env.step(action)
 
-            frames.append(observation)
-            frame_counter += 1 
-            if frame_counter == frame_skip:
-                print("here", frame_counter)
-                frame_counter = 0
-                processed_frames = torch.tensor(phi(frames),dtype=torch.float)
-                print(processed_frames.shape)
-                action = torch.argmax(behavior_model(processed_frames)).item()
-                print("action",action)
-
-
+    #         frames.append(observation)
+    #         frame_counter += 1 
+    #         if frame_counter == frame_skip:
+    #             print("here", frame_counter)
+    #             frame_counter = 0
+    #             processed_frames = torch.tensor(phi(frames),dtype=torch.float)
+    #             print(processed_frames.shape)
+    #             action = torch.argmax(behavior_model(processed_frames)).item()
+    #             print("action",action)
 
 
 
-            total_reward += reward
-            episode_over = terminated or truncated
 
-        print(f"Episode finished! Total reward: {total_reward}")
+
+    #         total_reward += reward
+    #         episode_over = terminated or truncated
+
+    #     print(f"Episode finished! Total reward: {total_reward}")
     env.close()
 
 breakout_training()
