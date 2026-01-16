@@ -65,9 +65,8 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
 
 
         if len(frames) == frame_skip:
-                        # Check if this is the first state after a reset (phi_2 is -1 or None)
-            if phi_2 == -1:
-                # First state of new episode: both phi_1 and phi_2 are the same
+            # Check if this is the first state after a reset (phi_2 is -1)
+            if not isinstance(phi_2, np.ndarray) and phi_2 == -1:
                 phi_1 = phi(frames)
                 phi_2 = phi_1
                 frames = []
@@ -126,7 +125,7 @@ def breakout_training():
     batch_size = 2
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.1,1000)
+    eps_val = eps_anneal(1,.1,100)
 
 
     episode_over = False
@@ -154,6 +153,7 @@ def breakout_training():
         frames.append(observation)
         total_frame_count += 1
 
+        action = 0
         old_action = 0
         old_reward = 0
         total_reward = 0
@@ -164,8 +164,7 @@ def breakout_training():
             frames.append(observation)
 
             if len(frames)== frame_skip:
-                if phi_2 == -1:
-                    # First state of new episode: both phi_1 and phi_2 are the same
+                if not isinstance(phi_2, np.ndarray) and phi_2 == -1:
                     phi_1 = phi(frames)
                     phi_2 = phi_1
                     frames = []
@@ -178,15 +177,40 @@ def breakout_training():
 
 
                 #select e-greedy action
-                
+                if np.random.random() < eps_val(total_frame_count):
+                    print("random action taken with eps", eps_val(total_frame_count))
+                    action = np.random.randint(0, 3)
+                else:
 
-                processed_frames = torch.tensor(phi_2,dtype=torch.float)
-                action = torch.argmax(behavior_model(processed_frames)).item()
+                    processed_frames = torch.tensor(phi_2,dtype=torch.float)
+                    action = torch.argmax(behavior_model(processed_frames)).item()
+                    print("model action taken")
+
+
+                #check if it's SGD time
+                if action_count == update_frequency:
+                    print("would SGD update here")
+                    action_count = 0
+
+                    minibatch = [replay_buffer[1],replay_buffer[2]] #hardcode this selection just to make sure it works
+
+
+                old_action = action
+                old_reward = reward
+                frames = []
+                action_count += 1
+
+                
 
             total_reward += reward
             episode_over = terminated or truncated
 
         episode_rewards.append(total_reward)
-    env.close()
 
-breakout_training()
+
+    env.close()
+    return episode_rewards
+
+
+reward_list = breakout_training()
+print(reward_list)
