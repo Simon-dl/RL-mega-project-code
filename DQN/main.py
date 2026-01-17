@@ -30,10 +30,10 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     observation, _ = env.reset()
     frames.append(observation)
     total_frame_count += 1
-    old_action = 0
+    old_action = 1
     old_reward = 0
 
-    action = 0 #start with no action
+    action = 1 #start with fire
 
     for i in range(3): #setting up
         total_frame_count += 1
@@ -100,8 +100,56 @@ def eps_anneal(initial, final, total_frames):
     
     return get_epsilon
 
+def eval_model(model,frame_skip,eval_num):
+    env = gym.make('ALE/Breakout-v5', render_mode="rgb_array")
+    env = gym.wrappers.RecordVideo(
+        env,
+        episode_trigger = lambda num: num % 1 == 0,
+        video_folder="saved-video-folder",
+        name_prefix=f"video-{eval_num}",
+    )
+
+    start = time.time()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    episode_over = False
+
+    frames = []
+    observation, _ = env.reset()
+    frames.append(observation)
+
+    action = 1
+    total_reward = 0
+    while not episode_over:
+            observation, reward, terminated, truncated, _ = env.step(action)
+            frames.append(observation)
+
+            #just greedy action selection for eval
+            if len(frames) == frame_skip:
+                processed_frames = torch.tensor(phi(frames),dtype=torch.float).to(device)
+                action = torch.argmax(model(processed_frames)).item()
+                frames = []
+
+            total_reward += reward
+            episode_over = terminated or truncated
+
+    end = time.time()
+    print(f"Eval took {end - start} seconds")
+
+    env.close()
+
+    return total_reward
+
+
+
+
+    
+
+
+
+
 def breakout_training():
     #render_mode="human" for when I want to watch an episode
+
     env = gym.make('ALE/Breakout-v5')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -116,6 +164,8 @@ def breakout_training():
     lr = 0.00025
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
+
+
     #target network updare frequence.
     network_update_freq = 5000
 
@@ -124,13 +174,22 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 2000
+    episodes = 800
     discount = .99
     total_frame_count = 0 
     batch_size = 32
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.1,100000)
+    eps_val = eps_anneal(1,.01,1000000)
+
+    #eval
+    do_eval = False
+    eval_step = 250000
+    eval_rewards = []
+    eval_num = 1
+
+    #actions
+    no_op_action = 0
     
     episode_rewards = []
 
@@ -144,7 +203,13 @@ def breakout_training():
     total_frame_count = populate_buffer(env,replay_buffer,frame_skip,pop_frame_count) 
     avg_time = []
 
+    
+
     print("starting episodes")
+
+    #inital eval
+    eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) 
+    eval_num += 1
 
     for i in tqdm.tqdm(range(episodes)): 
         start = time.time()
@@ -156,8 +221,8 @@ def breakout_training():
         total_frame_count += 1
 
         phi_2 = -1 #make sure 
-        action = 0
-        old_action = 0
+        action = 1
+        old_action = 1
         old_reward = 0
         total_reward = 0
 
@@ -165,6 +230,10 @@ def breakout_training():
             observation, reward, terminated, truncated, _ = env.step(action)
             total_frame_count += 1
             frames.append(observation)
+
+
+            if total_frame_count % eval_step == 0:
+                do_eval = True
 
             if len(frames)== frame_skip:
                 if not isinstance(phi_2, np.ndarray) and phi_2 == -1:
@@ -183,7 +252,6 @@ def breakout_training():
                 if np.random.random() < eps_val(total_frame_count):
                     action = env.action_space.sample()
                 else:
-
                     processed_frames = torch.tensor(phi_2,dtype=torch.float).to(device)
                     action = torch.argmax(behavior_model(processed_frames)).item()
 
@@ -258,14 +326,23 @@ def breakout_training():
         end = time.time()
         avg_time.append(end - start)
 
+        if do_eval == True: # do at end of episode to not mess up current episode 
+            eval_num += 1
+            eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num))
+            do_eval = False
+            
+
+    eval_num += 1
+    eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) #one final eval
     print(len(replay_buffer))
     print(total_frame_count - pop_frame_count)
     env.close()
-    return episode_rewards, avg_time
+    return episode_rewards, eval_rewards, avg_time
 
 
-reward_list, time = breakout_training()
+reward_list, eval_rewards, time = breakout_training()
 print(reward_list[-10:])
+print(eval_rewards)
 print(sum(time)/len(time))
 
 
