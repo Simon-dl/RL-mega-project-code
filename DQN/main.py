@@ -53,6 +53,9 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
         frames.append(observation)
         total_frame_count += 1
 
+        if truncated:
+            reward -= 1.0
+
         if terminated or truncated:
             phi_1 = phi_2
             phi_2 = -1
@@ -168,7 +171,7 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 10000
+    episodes = 2000
     discount = .99
     total_frame_count = 0 
     batch_size = 32
@@ -224,6 +227,10 @@ def breakout_training():
             observation, reward, terminated, truncated, _ = env.step(action)
             total_frame_count += 1
             frames.append(observation)
+
+            
+            if truncated:
+                reward -= 1.0
 
 
             if total_frame_count % eval_step == 0:
