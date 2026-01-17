@@ -9,7 +9,7 @@ from DQN import DQN
 import torch
 import random
 import time
-
+import tqdm
 
 def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     """
@@ -106,7 +106,7 @@ def breakout_training():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-
+    max_buffer_size = 30000
     replay_buffer = []
     total_frame_count = 0 
 
@@ -117,20 +117,20 @@ def breakout_training():
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
-    network_update_freq = 10000
+    network_update_freq = 2500
 
     #Do SGD updates after this many actions
     update_frequency = 4 
     action_count = 0
 
     #other hyper params
-    episodes = 5
+    episodes = 800
     discount = .99
     total_frame_count = 0 
     batch_size = 32
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.1,1000000)
+    eps_val = eps_anneal(1,.1,100000)
     
     episode_rewards = []
 
@@ -139,12 +139,14 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
-    pop_frame_count = 5000
+    pop_frame_count = 25000
 
     total_frame_count = populate_buffer(env,replay_buffer,frame_skip,pop_frame_count) 
     avg_time = []
 
-    for i in range(episodes): 
+    print("starting episodes")
+
+    for i in tqdm.tqdm(range(episodes)): 
         start = time.time()
         episode_over = False
 
@@ -238,6 +240,7 @@ def breakout_training():
                 old_reward = reward
                 frames = []
                 action_count += 1
+                
 
             
             #update target model every C frames
@@ -246,14 +249,15 @@ def breakout_training():
 
             total_reward += reward
             episode_over = terminated or truncated
+            if len(replay_buffer) > max_buffer_size:
+                replay_buffer.pop(0)
 
         episode_rewards.append(total_reward)
         end = time.time()
-        print(end - start)
         avg_time.append(end - start)
 
         #replay_buffer = replay_buffer[100:] #drop oldest 100 after each episode to keep transitions fresh
-
+    print(len(replay_buffer))
     print(total_frame_count - pop_frame_count)
     env.close()
     return episode_rewards, avg_time
