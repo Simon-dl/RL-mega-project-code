@@ -7,14 +7,16 @@ import numpy as np
 from DQN import phi
 from DQN import DQN
 import torch
-
+import random
 
 
 def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     """
     Takes in env, buffer, frames to skip, and amount to populate (in number of frames). 
 
-    returns: phi_2 and total_frame_count
+    returns: total_frame_count
+
+    populates replay buffer with some transition dynamics
     """
     phi_1 = 0
     phi_2 = 0
@@ -83,7 +85,7 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
             frames = []
     
 
-    return phi_2, total_frame_count 
+    return  total_frame_count 
 
 def eps_anneal(initial, final, total_frames):
     """
@@ -104,12 +106,12 @@ def breakout_training():
     replay_buffer = []
     total_frame_count = 0 
 
-    behavior_model = DQN(4)
+    behavior_model = DQN(4) #4 is output actions
     target_model = DQN(4)
 
     lr = .05
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
-
+    MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
     network_update_freq = 1000
     C = 0
@@ -137,12 +139,7 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
-    phi_2, total_frame_count = populate_buffer(env,replay_buffer,frame_skip,20) 
-
-    print(" \n phi_2",phi_2)
-    print(" \n total_frame_count", total_frame_count)
-    print(" \n buffer amount",len(replay_buffer))
-    print(" \n buffer 1 action",replay_buffer[1][1])
+    total_frame_count = populate_buffer(env,replay_buffer,frame_skip,20) 
 
 
     for i in range(episodes): 
@@ -153,6 +150,7 @@ def breakout_training():
         frames.append(observation)
         total_frame_count += 1
 
+        phi_2 = -1 #make sure 
         action = 0
         old_action = 0
         old_reward = 0
@@ -190,9 +188,45 @@ def breakout_training():
                 #check if it's SGD time
                 if action_count == update_frequency:
                     print("would SGD update here")
+                    optimizer.zero_grad()
                     action_count = 0
 
-                    minibatch = [replay_buffer[1],replay_buffer[2]] #hardcode this selection just to make sure it works
+
+                    minibatch = random.choices(replay_buffer,k = batch_size)
+
+                    target_Qs = []
+                    pred_Q = []
+
+                    for i in range(len(minibatch)):
+                        if not isinstance(minibatch[i][-1], np.ndarray) and minibatch[i][-1] == -1:
+                            target_Qs.append(minibatch[i][2])
+                        else:
+                            with torch.no_grad():
+                                target_frames = torch.tensor(minibatch[i][-1],dtype=torch.float)
+                                target_model_val = torch.max(target_model(target_frames)).item()
+                                reward = minibatch[i][2]
+                                target_Qs.append(reward + discount * target_model_val)
+
+                        pred_frames = torch.tensor(minibatch[i][0],dtype=torch.float)
+                        action_taken = minibatch[i][1]
+                        q_values = behavior_model(pred_frames)
+                        pred_Q.append(q_values[0, action_taken]) #nothing says we take the max here in the paper pseudocode.
+
+                    ys = torch.tensor(target_Qs,dtype=torch.float)
+                    pds = torch.stack(pred_Q)
+                    loss = MSE_loss(pds,ys)
+
+                    print("loss", loss.item())
+                    loss.backward()
+                    optimizer.step()
+                    break
+
+
+
+
+
+
+
 
 
                 old_action = action
