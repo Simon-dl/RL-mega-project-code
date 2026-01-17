@@ -141,12 +141,6 @@ def eval_model(model,frame_skip,eval_num):
 
 
 
-
-    
-
-
-
-
 def breakout_training():
     #render_mode="human" for when I want to watch an episode
 
@@ -174,19 +168,19 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 800
+    episodes = 10000
     discount = .99
     total_frame_count = 0 
     batch_size = 32
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.01,1000000)
+    eps_val = eps_anneal(1,.1,1000000)
 
     #eval
     do_eval = False
     eval_step = 250000
     eval_rewards = []
-    eval_num = 1
+    eval_num = 0
 
     #actions
     no_op_action = 0
@@ -208,8 +202,8 @@ def breakout_training():
     print("starting episodes")
 
     #inital eval
-    eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) 
-    eval_num += 1
+    # eval_num += 1
+    # eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) 
 
     for i in tqdm.tqdm(range(episodes)): 
         start = time.time()
@@ -233,6 +227,7 @@ def breakout_training():
 
 
             if total_frame_count % eval_step == 0:
+                print("here")
                 do_eval = True
 
             if len(frames)== frame_skip:
@@ -327,15 +322,18 @@ def breakout_training():
         avg_time.append(end - start)
 
         if do_eval == True: # do at end of episode to not mess up current episode 
+
+            print("eval",eval_num, "frame", total_frame_count)
             eval_num += 1
             eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num))
             do_eval = False
             
-
+    print(eval_num)
     eval_num += 1
+    print(eval_num)
     eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) #one final eval
     print(len(replay_buffer))
-    print(total_frame_count - pop_frame_count)
+    print("final frame count", total_frame_count - pop_frame_count)
     env.close()
     return episode_rewards, eval_rewards, avg_time
 

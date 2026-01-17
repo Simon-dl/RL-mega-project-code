@@ -15,7 +15,7 @@ def phi(frames):
     frames = np.array(frames)
     new_frames = []
     for i in range(len(frames)):
-        frame = cv2.cvtColor(frames[i], cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(frames[i], cv2.COLOR_RGB2GRAY)
         new_frames.append(cv2.resize(frame, (84, 84)))
     return np.array(new_frames).reshape(1,4,84,84)
 

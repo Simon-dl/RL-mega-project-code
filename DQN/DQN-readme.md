@@ -9,11 +9,13 @@ Set up the random runs and make sure populating the replay buffer works as expec
 
 do a test batch gradient desecent on the network using samples from replay buffer, make sure loss and sampling is done correctly. (done) 1-17-26
 
-Then set up dummy training loop with simple hyperparams to make sure it behaves all togeher correctly on a small scale. remember eps annealing. Paper does network SGD update every 4 actions. (done)
+Then set up dummy training loop with simple hyperparams to make sure it behaves all togeher correctly on a small scale. remember eps annealing. Paper does network SGD update every 4 actions. (done) 1-17-26
 
-Add evaluation every 250000 frames
+Add evaluation every 250000 frames (done) 1-17-26
 
-Then set up recordings and do a full scale training and hope it works.
+Then set up recordings and do a full scale training and hope it works. 1-17-26
+
+The model seems to do No-Op actions and let time run out, should I add negative rewards to make it pushes the model to make actions
 
 
 
@@ -31,6 +33,8 @@ Then set up recordings and do a full scale training and hope it works.
 - After more batching improvements .25 per episode. A full 800 run usually takes around 4 minutes for me, but ideally it will take longer as the agent stays alive longer
 
 -Relooking at the paper I did not realize the agents were trained for 10 million frames, that's crazy and I have to update my episode count by a lot. 800 episodes gets me 280,000 frames (not including inital 25000 frames), no wonder they annealed eps over 1000000. 
+
+
 
 
 # What could I have probably done better:
