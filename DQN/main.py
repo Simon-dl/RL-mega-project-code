@@ -113,7 +113,7 @@ def breakout_training():
     behavior_model = DQN(4).to(device) #4 is output actions
     target_model = DQN(4).to(device)
 
-    lr = .05
+    lr = 0.00025
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
@@ -181,7 +181,7 @@ def breakout_training():
 
                 #select e-greedy action
                 if np.random.random() < eps_val(total_frame_count):
-                    action = np.random.randint(0, 3)
+                    action = env.action_space.sample()
                 else:
 
                     processed_frames = torch.tensor(phi_2,dtype=torch.float).to(device)
@@ -194,7 +194,8 @@ def breakout_training():
                     action_count = 0
 
 
-                    minibatch = random.choices(replay_buffer, k=batch_size)
+                    # minibatch = random.choices(replay_buffer, k=batch_size) # with replacement
+                    minibatch = random.sample(replay_buffer, min(batch_size, len(replay_buffer))) #without
 
                     # Batch all states and next_states
                     states = []
@@ -233,6 +234,7 @@ def breakout_training():
 
                     loss = MSE_loss(pred_Q, target_Qs)
                     loss.backward()
+                    torch.nn.utils.clip_grad_norm_(behavior_model.parameters(), max_norm=10)
                     optimizer.step()
 
 
