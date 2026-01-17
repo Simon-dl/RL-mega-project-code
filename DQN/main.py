@@ -117,14 +117,14 @@ def breakout_training():
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
-    network_update_freq = 2500
+    network_update_freq = 5000
 
     #Do SGD updates after this many actions
     update_frequency = 4 
     action_count = 0
 
     #other hyper params
-    episodes = 800
+    episodes = 2000
     discount = .99
     total_frame_count = 0 
     batch_size = 32
@@ -258,7 +258,6 @@ def breakout_training():
         end = time.time()
         avg_time.append(end - start)
 
-        #replay_buffer = replay_buffer[100:] #drop oldest 100 after each episode to keep transitions fresh
     print(len(replay_buffer))
     print(total_frame_count - pop_frame_count)
     env.close()
