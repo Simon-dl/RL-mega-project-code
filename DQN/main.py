@@ -113,24 +113,24 @@ def breakout_training():
     behavior_model = DQN(4).to(device) #4 is output actions
     target_model = DQN(4).to(device)
 
-    lr = .1
+    lr = .05
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
-    network_update_freq = 1000
+    network_update_freq = 10000
 
     #Do SGD updates after this many actions
     update_frequency = 4 
     action_count = 0
 
     #other hyper params
-    episodes = 200
+    episodes = 5
     discount = .99
     total_frame_count = 0 
     batch_size = 32
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.1,100000)
+    eps_val = eps_anneal(1,.1,1000000)
     
     episode_rewards = []
 
@@ -139,12 +139,13 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
-    total_frame_count = populate_buffer(env,replay_buffer,frame_skip,25000) 
+    pop_frame_count = 5000
 
+    total_frame_count = populate_buffer(env,replay_buffer,frame_skip,pop_frame_count) 
+    avg_time = []
 
     for i in range(episodes): 
         start = time.time()
-        print("episode", i)
         episode_over = False
 
         frames = []
@@ -191,30 +192,44 @@ def breakout_training():
                     action_count = 0
 
 
-                    minibatch = random.choices(replay_buffer,k = batch_size)
+                    minibatch = random.choices(replay_buffer, k=batch_size)
 
-                    target_Qs = []
-                    pred_Q = []
+                    # Batch all states and next_states
+                    states = []
+                    next_states = []
+                    actions = []
+                    rewards = []
+                    dones = []
 
-                    for i in range(len(minibatch)):
-                        if not isinstance(minibatch[i][-1], np.ndarray) and minibatch[i][-1] == -1:
-                            target_Qs.append(minibatch[i][2])
+                    for transition in minibatch:
+                        states.append(transition[0])
+                        actions.append(transition[1])
+                        rewards.append(transition[2])
+                        next_state = transition[3]
+                        if isinstance(next_state, np.ndarray):
+                            next_states.append(next_state)
+                            dones.append(False)
                         else:
-                            with torch.no_grad():
-                                target_frames = torch.tensor(minibatch[i][-1],dtype=torch.float).to(device)
-                                target_model_val = torch.max(target_model(target_frames)).item()
-                                reward = minibatch[i][2]
-                                target_Qs.append(reward + discount * target_model_val)
+                            next_states.append(transition[0])  # dummy state for terminal
+                            dones.append(True)
 
-                        pred_frames = torch.tensor(minibatch[i][0],dtype=torch.float).to(device)
-                        action_taken = minibatch[i][1]
-                        q_values = behavior_model(pred_frames)
-                        pred_Q.append(q_values[0, action_taken]) #nothing says we take the max here in the paper pseudocode.
+                    # Convert to batched tensors
+                    states_tensor = torch.tensor(np.array(states), dtype=torch.float).to(device).squeeze(1)
+                    next_states_tensor = torch.tensor(np.array(next_states), dtype=torch.float).to(device).squeeze(1)
+                    actions_tensor = torch.tensor(actions, dtype=torch.long).to(device)
+                    rewards_tensor = torch.tensor(rewards, dtype=torch.float).to(device)
+                    dones_tensor = torch.tensor(dones, dtype=torch.bool).to(device)
 
-                    ys = torch.tensor(target_Qs,dtype=torch.float).to(device)
-                    pds = torch.stack(pred_Q)
-                    loss = MSE_loss(pds,ys)
+                    # Batch forward passes
+                    with torch.no_grad():
+                        next_q_values = target_model(next_states_tensor)
+                        next_q_max = torch.max(next_q_values, dim=1)[0]
+                        target_Qs = rewards_tensor + (~dones_tensor).float() * discount * next_q_max
 
+                    current_q_values = behavior_model(states_tensor)
+                    pred_Q = current_q_values.gather(1, actions_tensor.unsqueeze(1)).squeeze(1)
+
+                    loss = MSE_loss(pred_Q, target_Qs)
                     loss.backward()
                     optimizer.step()
 
@@ -227,7 +242,6 @@ def breakout_training():
             
             #update target model every C frames
             if total_frame_count % network_update_freq == 0:
-                print("copying over model")
                 target_model.load_state_dict(behavior_model.state_dict())
 
             total_reward += reward
@@ -236,13 +250,18 @@ def breakout_training():
         episode_rewards.append(total_reward)
         end = time.time()
         print(end - start)
+        avg_time.append(end - start)
 
-    print(len(replay_buffer))
+        #replay_buffer = replay_buffer[100:] #drop oldest 100 after each episode to keep transitions fresh
+
+    print(total_frame_count - pop_frame_count)
     env.close()
-    return episode_rewards
+    return episode_rewards, avg_time
 
 
-reward_list = breakout_training()
-print(reward_list)
+reward_list, time = breakout_training()
+print(reward_list[-10:])
+print(sum(time)/len(time))
+
 
 
