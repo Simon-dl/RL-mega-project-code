@@ -8,6 +8,7 @@ from DQN import phi
 from DQN import DQN
 import torch
 import random
+import time
 
 
 def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
@@ -102,14 +103,17 @@ def eps_anneal(initial, final, total_frames):
 def breakout_training():
     #render_mode="human" for when I want to watch an episode
     env = gym.make('ALE/Breakout-v5')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    
 
     replay_buffer = []
     total_frame_count = 0 
 
-    behavior_model = DQN(4) #4 is output actions
-    target_model = DQN(4)
+    behavior_model = DQN(4).to(device) #4 is output actions
+    target_model = DQN(4).to(device)
 
-    lr = .05
+    lr = .1
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
@@ -120,16 +124,13 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 1
+    episodes = 200
     discount = .99
     total_frame_count = 0 
-    batch_size = 2
+    batch_size = 32
 
     #eps annealing hardcode, for 100k frames rather than 1M like in paper
-    eps_val = eps_anneal(1,.1,100)
-
-
-    episode_over = False
+    eps_val = eps_anneal(1,.1,100000)
     
     episode_rewards = []
 
@@ -138,10 +139,12 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
-    total_frame_count = populate_buffer(env,replay_buffer,frame_skip,20) 
+    total_frame_count = populate_buffer(env,replay_buffer,frame_skip,25000) 
 
 
     for i in range(episodes): 
+        start = time.time()
+        print("episode", i)
         episode_over = False
 
         frames = []
@@ -178,7 +181,7 @@ def breakout_training():
                     action = np.random.randint(0, 3)
                 else:
 
-                    processed_frames = torch.tensor(phi_2,dtype=torch.float)
+                    processed_frames = torch.tensor(phi_2,dtype=torch.float).to(device)
                     action = torch.argmax(behavior_model(processed_frames)).item()
 
 
@@ -198,17 +201,17 @@ def breakout_training():
                             target_Qs.append(minibatch[i][2])
                         else:
                             with torch.no_grad():
-                                target_frames = torch.tensor(minibatch[i][-1],dtype=torch.float)
+                                target_frames = torch.tensor(minibatch[i][-1],dtype=torch.float).to(device)
                                 target_model_val = torch.max(target_model(target_frames)).item()
                                 reward = minibatch[i][2]
                                 target_Qs.append(reward + discount * target_model_val)
 
-                        pred_frames = torch.tensor(minibatch[i][0],dtype=torch.float)
+                        pred_frames = torch.tensor(minibatch[i][0],dtype=torch.float).to(device)
                         action_taken = minibatch[i][1]
                         q_values = behavior_model(pred_frames)
                         pred_Q.append(q_values[0, action_taken]) #nothing says we take the max here in the paper pseudocode.
 
-                    ys = torch.tensor(target_Qs,dtype=torch.float)
+                    ys = torch.tensor(target_Qs,dtype=torch.float).to(device)
                     pds = torch.stack(pred_Q)
                     loss = MSE_loss(pds,ys)
 
@@ -231,11 +234,15 @@ def breakout_training():
             episode_over = terminated or truncated
 
         episode_rewards.append(total_reward)
+        end = time.time()
+        print(end - start)
 
-
+    print(len(replay_buffer))
     env.close()
     return episode_rewards
 
 
 reward_list = breakout_training()
 print(reward_list)
+
+

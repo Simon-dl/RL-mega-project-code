@@ -25,5 +25,7 @@ Then set up recordings and do a full scale training and hope it works.
 
 - I realize now I have no reason to save the actions in the replay buffer and that is wasted computation since I am just inputting the state
 
+- Pre-Cuda usually around 2 seconds per episode, after cuda around .5 seconds per episode
+
 
 # What could I have probably done better:
