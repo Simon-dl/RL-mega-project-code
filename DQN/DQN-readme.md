@@ -9,7 +9,7 @@ Set up the random runs and make sure populating the replay buffer works as expec
 
 do a test batch gradient desecent on the network using samples from replay buffer, make sure loss and sampling is done correctly.
 
-Then set up dummy training loop with simple hyperparams to make sure it behaves all togeher correctly on a small scale. remember eps annealing. Paper does network SGD update every 4 actions.
+Then set up dummy training loop with simple hyperparams to make sure it behaves all togeher correctly on a small scale. remember eps annealing. Paper does network SGD update every 4 actions. (done)
 
 Then set up recordings and do a full scale training and hope it works.
 

@@ -114,7 +114,6 @@ def breakout_training():
     MSE_loss = torch.nn.MSELoss()
     #target network updare frequence.
     network_update_freq = 1000
-    C = 0
 
     #Do SGD updates after this many actions
     update_frequency = 4 
@@ -176,18 +175,15 @@ def breakout_training():
 
                 #select e-greedy action
                 if np.random.random() < eps_val(total_frame_count):
-                    print("random action taken with eps", eps_val(total_frame_count))
                     action = np.random.randint(0, 3)
                 else:
 
                     processed_frames = torch.tensor(phi_2,dtype=torch.float)
                     action = torch.argmax(behavior_model(processed_frames)).item()
-                    print("model action taken")
 
 
                 #check if it's SGD time
                 if action_count == update_frequency:
-                    print("would SGD update here")
                     optimizer.zero_grad()
                     action_count = 0
 
@@ -216,17 +212,8 @@ def breakout_training():
                     pds = torch.stack(pred_Q)
                     loss = MSE_loss(pds,ys)
 
-                    print("loss", loss.item())
                     loss.backward()
                     optimizer.step()
-                    break
-
-
-
-
-
-
-
 
 
                 old_action = action
@@ -234,7 +221,11 @@ def breakout_training():
                 frames = []
                 action_count += 1
 
-                
+            
+            #update target model every C frames
+            if total_frame_count % network_update_freq == 0:
+                print("copying over model")
+                target_model.load_state_dict(behavior_model.state_dict())
 
             total_reward += reward
             episode_over = terminated or truncated
