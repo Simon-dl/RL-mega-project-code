@@ -153,7 +153,7 @@ def breakout_training():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    max_buffer_size = 1000000
+    max_buffer_size = 250000 #this is the most my computer can reasonably handle
     replay_buffer = []
     total_frame_count = 0 
 
@@ -167,6 +167,7 @@ def breakout_training():
 
     #target network updare frequence.
     network_update_freq = 10000
+    net_update_count = 0
 
     #Do SGD updates after this many actions
     update_frequency = 4 
@@ -234,7 +235,6 @@ def breakout_training():
             reward = np.clip(reward, -1.0, 1.0)
 
             if total_frame_count % eval_step == 0:
-                print("here")
                 do_eval = True
 
             if len(frames)== frame_skip:
@@ -313,11 +313,12 @@ def breakout_training():
                 frames = []
                 action_count += 1
                 
-
+                net_update_count += 1
             
-            #update target model every C frames
-            if total_frame_count % network_update_freq == 0:
-                target_model.load_state_dict(behavior_model.state_dict())
+                #update target model every C frames
+                if net_update_count == network_update_freq:
+                    target_model.load_state_dict(behavior_model.state_dict())
+                    net_update_count = 0
 
             total_reward += reward
             episode_over = terminated or truncated

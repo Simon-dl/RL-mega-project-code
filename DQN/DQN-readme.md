@@ -38,5 +38,7 @@ The model seems to do No-Op actions and let time run out, should I add negative 
 
 -Not graceful for resets, does not handle them well. 
 
+-replay buffer 1M crashed cursor due to memory size
+
 
 # What could I have probably done better:
