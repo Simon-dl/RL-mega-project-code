@@ -34,7 +34,9 @@ The model seems to do No-Op actions and let time run out, should I add negative 
 
 -Relooking at the paper I did not realize the agents were trained for 10 million frames, that's crazy and I have to update my episode count by a lot. 800 episodes gets me 280,000 frames (not including inital 25000 frames), no wonder they annealed eps over 1000000. 
 
--While it does seem to work reasonable okay when the ball is fired, it almost never fires the ball. Probably because it doesn't usually need to learn it, leading to truncation by time out. I am going to try and steer away from that behavior by making timeout give negative reward
+-While it does seem to work reasonable okay when the ball is fired, it almost never fires the ball. Probably because it doesn't usually need to learn it, leading to truncation by time out. I am going to try and steer away from that behavior by making timeout give negative reward ( I'm not sure this helped)
+
+-Not graceful for resets, does not handle them well. 
 
 
 # What could I have probably done better:

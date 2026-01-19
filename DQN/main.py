@@ -11,6 +11,9 @@ import random
 import time
 import tqdm
 
+
+
+
 def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     """
     Takes in env, buffer, frames to skip, and amount to populate (in number of frames). 
@@ -53,8 +56,7 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
         frames.append(observation)
         total_frame_count += 1
 
-        if truncated:
-            reward -= 1.0
+        reward = np.clip(reward, -1.0, 1.0)
 
         if terminated or truncated:
             phi_1 = phi_2
@@ -151,7 +153,7 @@ def breakout_training():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    max_buffer_size = 30000
+    max_buffer_size = 1000000
     replay_buffer = []
     total_frame_count = 0 
 
@@ -164,19 +166,19 @@ def breakout_training():
 
 
     #target network updare frequence.
-    network_update_freq = 5000
+    network_update_freq = 10000
 
     #Do SGD updates after this many actions
     update_frequency = 4 
     action_count = 0
 
     #other hyper params
-    episodes = 2000
+    episodes = 25000
     discount = .99
     total_frame_count = 0 
     batch_size = 32
 
-    #eps annealing hardcode, for 100k frames rather than 1M like in paper
+    #eps annealing hardcode, for 1M
     eps_val = eps_anneal(1,.1,1000000)
 
     #eval
@@ -195,7 +197,7 @@ def breakout_training():
     phi_1 = 0
     phi_2 = 0
 
-    pop_frame_count = 25000
+    pop_frame_count = 50000
 
     total_frame_count = populate_buffer(env,replay_buffer,frame_skip,pop_frame_count) 
     avg_time = []
@@ -229,9 +231,7 @@ def breakout_training():
             frames.append(observation)
 
             
-            if truncated:
-                reward -= 1.0
-
+            reward = np.clip(reward, -1.0, 1.0)
 
             if total_frame_count % eval_step == 0:
                 print("here")
