@@ -152,15 +152,16 @@ def breakout_training():
     env = gym.make('ALE/Breakout-v5')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    actions = 4
     
     max_buffer_size = 250000 #this is the most my computer can reasonably handle
     replay_buffer = []
     total_frame_count = 0 
 
-    behavior_model = DQN(4).to(device) #4 is output actions
-    target_model = DQN(4).to(device)
+    behavior_model = DQN(actions).to(device) #4 is output actions
+    target_model = DQN(actions).to(device)
 
-    lr = 0.00025
+    lr = 0.0001
     optimizer = torch.optim.Adam(behavior_model.parameters(),lr=lr)
     MSE_loss = torch.nn.MSELoss()
 
@@ -174,7 +175,7 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 25000
+    episodes = 29000
     discount = .99
     total_frame_count = 0 
     batch_size = 32
@@ -184,7 +185,7 @@ def breakout_training():
 
     #eval
     do_eval = False
-    eval_step = 250000
+    eval_step =  5000000 #skip early evals, then change back to 500,000 later
     eval_rewards = []
     eval_num = 0
 
@@ -319,11 +320,15 @@ def breakout_training():
                 if net_update_count == network_update_freq:
                     target_model.load_state_dict(behavior_model.state_dict())
                     net_update_count = 0
+                if len(replay_buffer) > max_buffer_size:
+                    replay_buffer.pop(0)
 
             total_reward += reward
             episode_over = terminated or truncated
-            if len(replay_buffer) > max_buffer_size:
-                replay_buffer.pop(0)
+
+        if total_frame_count >= 5000000:
+            eval_step = 1000000
+
 
         episode_rewards.append(total_reward)
         end = time.time()
@@ -350,6 +355,16 @@ reward_list, eval_rewards, time = breakout_training()
 print(reward_list[-10:])
 print(eval_rewards)
 print(sum(time)/len(time))
+
+# Plot rewards vs episodes
+import matplotlib.pyplot as plt
+episodes = np.arange(1, len(reward_list) + 1)
+plt.plot(episodes, reward_list)
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.title('Training Rewards vs Episodes')
+plt.grid(True)
+plt.show()
 
 
 

@@ -8,15 +8,14 @@ import cv2
 def phi(frames):
     """
     Preprocess the input frames to a stack of resized grayscale images.
-
-    expect frames to be a tensor of shape (n_frames, height, width, channels)
-    return a tensor of shape (84, 84, n_frames )
     """
     frames = np.array(frames)
     new_frames = []
     for i in range(len(frames)):
         frame = cv2.cvtColor(frames[i], cv2.COLOR_RGB2GRAY)
-        new_frames.append(cv2.resize(frame, (84, 84)))
+        frame = cv2.resize(frame, (84, 84))
+        frame = frame.astype(np.float32) / 255.0
+        new_frames.append(frame)
     return np.array(new_frames).reshape(1,4,84,84)
 
 #Model
