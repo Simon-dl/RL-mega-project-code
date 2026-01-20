@@ -15,11 +15,11 @@ Add evaluation every 250000 frames (done) 1-17-26
 
 Then set up recordings and do a full scale training and hope it works. 1-17-26
 
-The model seems to do No-Op actions and let time run out, should I add negative rewards to make it pushes the model to make actions
 
 
 
-# Implementation notes: 
+
+# Implementation notes for breakout: 
 
 - Gonna set phi_2 = -1 if game terminated in the frames getting to phi_2
 
@@ -41,4 +41,3 @@ The model seems to do No-Op actions and let time run out, should I add negative 
 -replay buffer 1M crashed cursor due to memory size
 
 
-# What could I have probably done better:
