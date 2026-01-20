@@ -105,8 +105,8 @@ def eps_anneal(initial, final, total_frames):
     
     return get_epsilon
 
-def eval_model(model,frame_skip,eval_num):
-    env = gym.make('ALE/Breakout-v5', render_mode="rgb_array")
+def eval_model(env_name,model,frame_skip,eval_num):
+    env = gym.make(env_name, render_mode="rgb_array")
     env = gym.wrappers.RecordVideo(
         env,
         episode_trigger = lambda num: num % 1 == 0,
@@ -148,13 +148,14 @@ def eval_model(model,frame_skip,eval_num):
 
 def breakout_training():
     #render_mode="human" for when I want to watch an episode
-
-    env = gym.make('ALE/Breakout-v5')
+    env_name = "ALE/Boxing-v5"
+    env = gym.make(env_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    actions = 4
+    actions = env.action_space.n
+   
     
-    max_buffer_size = 250000 #this is the most my computer can reasonably handle
+    max_buffer_size = 75000 #250000 this is the most my computer can reasonably handle on breakout, way lower on pong and boxing
     replay_buffer = []
     total_frame_count = 0 
 
@@ -167,7 +168,7 @@ def breakout_training():
 
 
     #target network updare frequence.
-    network_update_freq = 10000
+    network_update_freq = 5000
     net_update_count = 0
 
     #Do SGD updates after this many actions
@@ -175,7 +176,7 @@ def breakout_training():
     action_count = 0
 
     #other hyper params
-    episodes = 29000
+    episodes = 360 #29000 for 10M frames on breakout
     discount = .99
     total_frame_count = 0 
     batch_size = 32
@@ -185,7 +186,7 @@ def breakout_training():
 
     #eval
     do_eval = False
-    eval_step =  5000000 #skip early evals, then change back to 500,000 later
+    eval_step =  250000 #skip early evals, then change back to 500,000 later
     eval_rewards = []
     eval_num = 0
 
@@ -326,8 +327,8 @@ def breakout_training():
             total_reward += reward
             episode_over = terminated or truncated
 
-        if total_frame_count >= 5000000:
-            eval_step = 1000000
+        if total_frame_count >= 1000000:
+            eval_step = 250000
 
 
         episode_rewards.append(total_reward)
@@ -338,13 +339,13 @@ def breakout_training():
 
             print("eval",eval_num, "frame", total_frame_count)
             eval_num += 1
-            eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num))
+            eval_rewards.append(eval_model(env_name,behavior_model,frame_skip,eval_num))
             do_eval = False
             
     print(eval_num)
     eval_num += 1
     print(eval_num)
-    eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) #one final eval
+    eval_rewards.append(eval_model(env_name,behavior_model,frame_skip,eval_num)) #one final eval
     print(len(replay_buffer))
     print("final frame count", total_frame_count - pop_frame_count)
     env.close()
