@@ -1,4 +1,4 @@
-### DQN implementation notes
+### PPO implementation notes
 
 # TODO:
 
