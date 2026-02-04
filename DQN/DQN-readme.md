@@ -32,12 +32,12 @@ Then set up recordings and do a full scale training and hope it works. 1-17-26
 - Pre-Cuda usually around 2 seconds per episode, after cuda around .5 seconds per episode.
 - After more batching improvements .25 per episode. A full 800 run usually takes around 4 minutes for me, but ideally it will take longer as the agent stays alive longer
 
--Relooking at the paper I did not realize the agents were trained for 10 million frames, that's crazy and I have to update my episode count by a lot. 800 episodes gets me 280,000 frames (not including inital 25000 frames), no wonder they annealed eps over 1000000. 
+- Relooking at the paper I did not realize the agents were trained for 10 million frames, that's crazy and I have to update my episode count by a lot. 800 episodes gets me 280,000 frames (not including inital 25000 frames), no wonder they annealed eps over 1000000. 
 
--While it does seem to work reasonable okay when the ball is fired, it almost never fires the ball. Probably because it doesn't usually need to learn it, leading to truncation by time out. I am going to try and steer away from that behavior by making timeout give negative reward ( I'm not sure this helped)
+- While it does seem to work reasonable okay when the ball is fired, it almost never fires the ball. Probably because it doesn't usually need to learn it, leading to truncation by time out. I am going to try and steer away from that behavior by making timeout give negative reward ( I'm not sure this helped)
 
--Not graceful for resets, does not handle them well. 
+- Not graceful for resets, does not handle them well. 
 
--replay buffer 1M crashed cursor due to memory size
+- Replay buffer 1M crashed cursor due to memory size
 
 

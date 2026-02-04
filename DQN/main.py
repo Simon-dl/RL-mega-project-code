@@ -25,7 +25,6 @@ def populate_buffer(env,replay_buffer,frame_skip,amount_to_pop):
     phi_1 = 0
     phi_2 = 0
 
-    #phi_1 = torch.tensor(phi(frames),dtype=torch.float)
 
     total_frame_count = 0
     #populate replay buffer with random plays, split into helper function later
@@ -147,7 +146,6 @@ def eval_model(env_name,model,frame_skip,eval_num):
 
 
 def breakout_training():
-    #render_mode="human" for when I want to watch an episode
     env_name = "ALE/Boxing-v5"
     env = gym.make(env_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -209,7 +207,7 @@ def breakout_training():
 
     print("starting episodes")
 
-    #inital eval
+    #inital eval, always looks bad
     # eval_num += 1
     # eval_rewards.append(eval_model(behavior_model,frame_skip,eval_num)) 
 
