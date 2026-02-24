@@ -1,2 +1,5 @@
 */__pycache__*
 saved-video-folder/*
+/*/cifar10/data_batch_*
+/*/model.pth
+/*/dataset
